@@ -5,7 +5,10 @@ huggingface_hub==0.16.4
 tokenizers==0.13.3
 opencv-python-headless==4.8.0.76
 numpy==1.24.4
-matplotplib==3.8
+matplotlib==3.8.0
+pandas==3.0.2
+seaborn==0.13.2
+scikit-learn==1.8.0
 Pillow==10.0.0
 scipy==1.12
 timm==0.9.5

@@ -1,2 +1,5 @@
 *__pycache__*
 *ipynb*
+results
+.DS_Store
+.idea
