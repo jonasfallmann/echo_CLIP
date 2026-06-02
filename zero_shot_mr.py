@@ -578,15 +578,10 @@ def main():
 
     # Aggregate multiple videos for each subject by mean logits.
     subject_rows = []
-    y_true = []
-    y_pred = []
     for sid, all_logits in subject_logits.items():
         avg_logits = np.mean(np.stack(all_logits, axis=0), axis=0)
         pred_id = int(np.argmax(avg_logits))
         true_id = int(subject_label_ids[sid])
-
-        y_true.append(true_id)
-        y_pred.append(pred_id)
 
         subject_rows.append(
             {
@@ -598,50 +593,30 @@ def main():
             }
         )
 
-    four_way_report = report_metrics(
-        task_name="subject_4way",
-        y_true=y_true,
-        y_pred=y_pred,
-        class_names=CLASS_ORDER,
-        output_dir=args.output_dir,
-    )
+    # Build unified predictions (one entry per video) compatible with the unified inference pipeline
+    unified_predictions = []
+    for vr in video_rows:
+        probs = [vr.get(f"prob_{c}", 0.0) for c in CLASS_ORDER]
+        try:
+            true_label_id = CLASS_ORDER.index(vr["label"]) if vr.get("label") is not None else None
+        except ValueError:
+            true_label_id = None
 
-    binary_true = collapse_clinical_significant(y_true)
-    binary_pred = collapse_clinical_significant(y_pred)
-    binary_class_names = ["Not clinically significant (0/1)", "Clinical significant (2/3)"]
-    binary_report = report_metrics(
-        task_name="clinical_significant_binary",
-        y_true=binary_true,
-        y_pred=binary_pred,
-        class_names=binary_class_names,
-        output_dir=args.output_dir,
-    )
+        unified_predictions.append(
+            {
+                "subject_id": vr.get("subject_id"),
+                "video_id": vr.get("video_path"),
+                "true_label": true_label_id,
+                "probs": probs,
+            }
+        )
 
-    metrics = {
-        "subject_4way": {
-            "accuracy": float(four_way_report["accuracy"]),
-            "balanced_accuracy": float(
-                four_way_report["summary_df"].loc[four_way_report["summary_df"]["aggregation"] == "macro", "recall"].iloc[0]
-            ),
-            "macro_f1": float(
-                four_way_report["summary_df"].loc[four_way_report["summary_df"]["aggregation"] == "macro", "f1_score"].iloc[0]
-            ),
-            "confusion_matrix": four_way_report["confusion_matrix"].tolist(),
-        },
-        "clinical_significant_binary": {
-            "accuracy": float(binary_report["accuracy"]),
-            "balanced_accuracy": float(
-                binary_report["summary_df"].loc[binary_report["summary_df"]["aggregation"] == "macro", "recall"].iloc[0]
-            ),
-            "macro_f1": float(
-                binary_report["summary_df"].loc[binary_report["summary_df"]["aggregation"] == "macro", "f1_score"].iloc[0]
-            ),
-            "confusion_matrix": binary_report["confusion_matrix"].tolist(),
-        },
-    }
-    with (args.output_dir / "mr_subject_metrics.json").open("w") as f:
-        json.dump(metrics, f, indent=2)
+    # Save unified predictions for downstream, unified-metrics computation
+    unified_out = args.output_dir / "unified_predictions.json"
+    with unified_out.open("w") as f:
+        json.dump(unified_predictions, f, indent=2)
 
+    # Also save CSV outputs for convenience
     video_out = args.output_dir / "mr_video_predictions.csv"
     with video_out.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(video_rows[0].keys()))
@@ -655,26 +630,10 @@ def main():
         writer.writerows(subject_rows)
 
     print("Done.")
-    print(f"Subject-level 4-way accuracy: {metrics['subject_4way']['accuracy']:.4f}")
-    print(f"Subject-level 4-way balanced accuracy: {metrics['subject_4way']['balanced_accuracy']:.4f}")
-    print(f"Subject-level 4-way macro F1: {metrics['subject_4way']['macro_f1']:.4f}")
-    print(f"Clinical-significance binary accuracy: {metrics['clinical_significant_binary']['accuracy']:.4f}")
-    print(
-        f"Clinical-significance binary balanced accuracy: {metrics['clinical_significant_binary']['balanced_accuracy']:.4f}"
-    )
-    print(f"Clinical-significance binary macro F1: {metrics['clinical_significant_binary']['macro_f1']:.4f}")
-    print("4-way confusion matrix (rows=true, cols=pred):")
-    for row in metrics["subject_4way"]["confusion_matrix"]:
-        print(row)
-    print("Binary confusion matrix (rows=true, cols=pred):")
-    for row in metrics["clinical_significant_binary"]["confusion_matrix"]:
-        print(row)
+    print(f"Wrote unified predictions to: {unified_out}")
     print(f"Wrote prompts to: {args.output_dir / 'mr_prompts.json'}")
     print(f"Wrote video predictions to: {video_out}")
     print(f"Wrote subject predictions to: {subject_out}")
-    print(f"Wrote metrics to: {args.output_dir / 'mr_subject_metrics.json'}")
-    print(f"Wrote 4-way metric tables to: {args.output_dir / 'subject_4way_summary_metrics.csv'}")
-    print(f"Wrote binary metric tables to: {args.output_dir / 'clinical_significant_binary_summary_metrics.csv'}")
 
 
 if __name__ == "__main__":

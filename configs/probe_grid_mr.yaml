@@ -1,0 +1,51 @@
+seed: 0
+
+model:
+  name: hf-hub:mkaichristensen/echo-clip
+  device: cuda
+
+data:
+  train_csv: /path/to/train.csv
+  val_csv: /path/to/val.csv
+  video_path_col: video_path
+  label_col: label
+  subject_id_col: subject_id
+  borderline_policy: round_up
+  max_frames: 40
+  frame_step: 2
+  batch_size: 8
+  num_workers: 4
+
+probe:
+  depth: 1
+  num_heads: 8
+  mlp_ratio: 4.0
+
+optimization:
+  num_epochs: 20
+  multihead_kwargs:
+    - name: lr1e-3_wd1e-2
+      lr: 0.001
+      weight_decay: 0.01
+    - name: lr5e-4_wd1e-2
+      lr: 0.0005
+      weight_decay: 0.01
+    - name: lr1e-4_wd1e-2
+      lr: 0.0001
+      weight_decay: 0.01
+    - name: lr1e-3_wd1e-1
+      lr: 0.001
+      weight_decay: 0.1
+    - name: lr5e-4_wd1e-1
+      lr: 0.0005
+      weight_decay: 0.1
+    - name: lr1e-4_wd1e-1
+      lr: 0.0001
+      weight_decay: 0.1
+
+logging:
+  output_dir: probe_mr_outputs_grid
+  use_wandb: false
+  wandb_project: miracle-echo-clip-probe
+  wandb_run_name: null
+

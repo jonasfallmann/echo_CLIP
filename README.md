@@ -18,6 +18,58 @@ python -m pip install -r requirements.txt
 ```
 You should now be able to run `embedding_example.py` and `zero_shot_example.py`.
 
+## Probe training on frozen EchoCLIP embeddings
+
+You can train attentive probes (from `attentive_pooler.py`) on top of frozen video embeddings using `probe_train_mr.py`.
+The script supports initializing multiple probe heads from a YAML config and training them in parallel (same batches, separate optimizers).
+
+Expected CSV columns:
+
+- `video_path`
+- `label` (text or numeric class compatible with `zero_shot_mr.py` normalization)
+- `subject_id` (optional but recommended for subject-level validation metrics)
+
+Grid-search config example:
+
+- `configs/probe_grid_mr.yaml`
+
+Example run with YAML config:
+
+```bash
+python probe_train_mr.py --config configs/probe_grid_mr.yaml
+```
+
+Single-head CLI run (no YAML):
+
+```bash
+python probe_train_mr.py \
+  --train-csv /path/to/train.csv \
+  --val-csv /path/to/val.csv \
+  --video-path-col video_path \
+  --label-col label \
+  --subject-id-col subject_id \
+  --device cuda \
+  --epochs 20 \
+  --batch-size 8 \
+  --output-dir probe_mr_outputs
+```
+
+Optional Weights & Biases logging:
+
+```bash
+python -m pip install wandb
+python probe_train_mr.py --train-csv /path/to/train.csv --val-csv /path/to/val.csv --use-wandb
+```
+
+Artifacts written to `--output-dir`:
+
+- `checkpoints/latest.pt`
+- `checkpoints/epoch_XXX.pt` (per-epoch probe checkpoints)
+- `checkpoints/best.pt` (best by subject-level validation accuracy)
+- `probe_training_history.json`
+- `probe_head_summary.json` (per-head final/best subject accuracy and selected best head)
+- per-class metric CSVs and confusion plots from final validation pass
+
 ## Repo contents
 
 * `embedding_example.py` demonstrates how to load EchoCLIP-R's weights and use them to calculate the similarity between an example echocardiogram and example report text.
