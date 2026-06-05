@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from attentive_pooler import AttentiveClassifier
 from utils import read_avi
-from zero_shot_mr import CLASS_ORDER, normalize_label, report_metrics, resolve_video_path
+from utils import CLASS_ORDER, normalize_label, resolve_video_path, report_metrics
 
 try:
     import wandb
@@ -231,7 +231,11 @@ def make_loader(dataset, batch_size, num_workers, shuffle):
 def extract_video_tokens(model, pixel_values, device):
     # pixel_values: B x T x C x H x W
     bsz, nframes = pixel_values.shape[:2]
-    flat_pixels = pixel_values.reshape(-1, *pixel_values.shape[2:]).to(device, non_blocking=True)
+    flat_pixels = pixel_values.reshape(-1, *pixel_values.shape[2:])
+
+    # Get the dtype of the model's parameters
+    model_dtype = next(model.parameters()).dtype
+    flat_pixels = flat_pixels.to(device=device, dtype=model_dtype, non_blocking=True)
 
     with torch.no_grad():
         frame_embeddings = model.encode_image(flat_pixels)
@@ -445,7 +449,7 @@ def train_probe(cfg):
         p.requires_grad = False
 
     with torch.no_grad():
-        dummy = torch.zeros(1, 3, 224, 224, device=device)
+        dummy = torch.zeros(1, 3, 224, 224, device=device).to(dtype=torch.bfloat16)
         embed_dim = int(model.encode_image(dummy).shape[-1])
 
     logger.info("Encoder embedding dim: %d", embed_dim)

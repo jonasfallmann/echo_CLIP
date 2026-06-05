@@ -5,24 +5,24 @@ model:
   device: cuda
 
 data:
-  train_csv: /path/to/train.csv
-  val_csv: /path/to/val.csv
-  video_path_col: video_path
+  train_csv: /system/user/publicwork/fallmann/miracle/miracle/data/server/train_4class.csv
+  val_csv: /system/user/publicwork/fallmann/miracle/miracle/data/server/val_4class.csv
+  video_path_col: video_filename
   label_col: label
-  subject_id_col: subject_id
+  subject_id_col: patient_id
   borderline_policy: round_up
-  max_frames: 40
-  frame_step: 2
-  batch_size: 8
+  max_frames: 32
+  frame_step: 1
+  batch_size: 10
   num_workers: 4
 
 probe:
-  depth: 1
-  num_heads: 8
+  depth: 4
+  num_heads: 16
   mlp_ratio: 4.0
 
 optimization:
-  num_epochs: 20
+  num_epochs: 50
   multihead_kwargs:
     - name: lr1e-3_wd1e-2
       lr: 0.001
