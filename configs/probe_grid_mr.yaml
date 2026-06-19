@@ -5,8 +5,8 @@ model:
   device: cuda
 
 data:
-  train_csv: /system/user/publicwork/fallmann/miracle/miracle/data/server/train_4class.csv
-  val_csv: /system/user/publicwork/fallmann/miracle/miracle/data/server/val_4class.csv
+  train_csv: /system/user/publicwork/fallmann/miracle/miracle/data/server/train_val_4class.csv
+  val_csv: /system/user/publicwork/fallmann/miracle/miracle/data/server/test_4class.csv
   video_path_col: video_filename
   label_col: label
   subject_id_col: patient_id

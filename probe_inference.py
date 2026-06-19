@@ -14,6 +14,7 @@ from open_clip import create_model_and_transforms
 from torch.utils.data import DataLoader, Dataset
 
 from attentive_pooler import AttentiveClassifier
+from linear_pooler import LinearClassifier, MLPClassifier
 from utils import CLASS_ORDER, normalize_label, read_avi, resolve_video_path
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -35,6 +36,7 @@ def parse_args():
     parser.add_argument("--device", type=str, default=None, help="Override device (e.g., 'cuda' or 'cpu').")
     parser.add_argument("--batch-size", type=int, default=None, help="Override inference batch size.")
     parser.add_argument("--num-workers", type=int, default=None, help="Override dataloader workers.")
+    parser.add_argument("--probe-type", type=str, default=None, choices=["attentive", "linear", "mlp"], help="Override probe type.")
     parser.add_argument("--output-dir", type=Path, default=Path("probe_inference_outputs"))
 
     return parser.parse_args()
@@ -54,9 +56,12 @@ def load_inference_config(args):
         "frame_step": 2,
         "batch_size": 8,
         "num_workers": 4,
+        "probe_type": "attentive",
         "probe_depth": 1,
         "probe_num_heads": 8,
         "probe_mlp_ratio": 4.0,
+        "probe_dropout": 0.0,
+        "probe_use_layernorm": True,
     }
 
     # 1. Pull architecture and data parameters from training YAML
@@ -78,9 +83,12 @@ def load_inference_config(args):
         cfg["num_workers"] = data_cfg.get("num_workers", cfg["num_workers"])
 
         probe_cfg = yaml_cfg.get("probe", {})
+        cfg["probe_type"] = probe_cfg.get("type", cfg["probe_type"])
         cfg["probe_depth"] = probe_cfg.get("depth", cfg["probe_depth"])
         cfg["probe_num_heads"] = probe_cfg.get("num_heads", cfg["probe_num_heads"])
         cfg["probe_mlp_ratio"] = probe_cfg.get("mlp_ratio", cfg["probe_mlp_ratio"])
+        cfg["probe_dropout"] = probe_cfg.get("dropout", cfg["probe_dropout"])
+        cfg["probe_use_layernorm"] = probe_cfg.get("use_layernorm", cfg["probe_use_layernorm"])
 
     # 2. CLI arguments take ultimate precedence
     cfg["test_csv"] = args.test_csv
@@ -94,6 +102,8 @@ def load_inference_config(args):
         cfg["batch_size"] = args.batch_size
     if args.num_workers is not None:
         cfg["num_workers"] = args.num_workers
+    if args.probe_type is not None:
+        cfg["probe_type"] = args.probe_type
 
     return cfg
 
@@ -255,14 +265,32 @@ def main():
 
     logger.info(f"Using probe head {head_idx} (from {len(saved_state_dicts)} available heads).")
 
-    probe = AttentiveClassifier(
-        embed_dim=embed_dim,
-        num_heads=cfg["probe_num_heads"],
-        depth=cfg["probe_depth"],
-        mlp_ratio=cfg["probe_mlp_ratio"],
-        num_classes=len(CLASS_ORDER),
-        use_activation_checkpointing=False,
-    ).to(device)
+    probe_type = cfg["probe_type"]
+    logger.info(f"Probe type: {probe_type}")
+
+    if probe_type == "linear":
+        probe = LinearClassifier(
+            embed_dim=embed_dim,
+            num_classes=len(CLASS_ORDER),
+            use_layernorm=cfg["probe_use_layernorm"],
+            dropout=cfg["probe_dropout"],
+        ).to(device)
+    elif probe_type == "mlp":
+        probe = MLPClassifier(
+            embed_dim=embed_dim,
+            num_classes=len(CLASS_ORDER),
+            use_layernorm=cfg["probe_use_layernorm"],
+            dropout=cfg["probe_dropout"],
+        ).to(device)
+    else:
+        probe = AttentiveClassifier(
+            embed_dim=embed_dim,
+            num_heads=cfg["probe_num_heads"],
+            depth=cfg["probe_depth"],
+            mlp_ratio=cfg["probe_mlp_ratio"],
+            num_classes=len(CLASS_ORDER),
+            use_activation_checkpointing=False,
+        ).to(device)
 
     probe.load_state_dict(saved_state_dicts[head_idx])
     probe.eval()
