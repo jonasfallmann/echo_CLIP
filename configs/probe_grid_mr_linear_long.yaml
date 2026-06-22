@@ -1,0 +1,103 @@
+seed: 0
+
+model:
+  name: hf-hub:mkaichristensen/echo-clip
+  device: cuda
+
+data:
+  train_csv: /system/user/publicwork/fallmann/miracle/miracle/data/server/train_val_4class.csv
+  val_csv: /system/user/publicwork/fallmann/miracle/miracle/data/server/test_4class.csv
+  video_path_col: video_filename
+  label_col: label
+  subject_id_col: patient_id
+  borderline_policy: round_up
+  max_frames: 128
+  frame_step: 1
+  batch_size: 12
+  num_workers: 4
+
+probe:
+  type: linear
+  depth: 4                # ignored for linear probes
+  num_heads: 16           # ignored for linear probes
+  mlp_ratio: 4.0          # ignored for linear probes
+  dropout: 0.0
+  use_layernorm: true
+
+optimization:
+  num_epochs: 12
+  multihead_kwargs:
+    # --- Group 1: lr=0.01 (Higher LR for linear probes) ---
+    - name: lr1e-2_wd0
+      final_lr: 0.0
+      final_weight_decay: 0.0
+      lr: 0.01
+      start_lr: 0.01
+      warmup: 0.0
+      weight_decay: 0.0
+    - name: lr1e-2_wd1e-4
+      final_lr: 0.0
+      final_weight_decay: 0.0001
+      lr: 0.01
+      start_lr: 0.01
+      warmup: 0.0
+      weight_decay: 0.0001
+    - name: lr1e-2_wd1e-2
+      final_lr: 0.0
+      final_weight_decay: 0.01
+      lr: 0.01
+      start_lr: 0.01
+      warmup: 0.0
+      weight_decay: 0.01
+
+    # --- Group 2: lr=0.005 ---
+    - name: lr5e-3_wd0
+      final_lr: 0.0
+      final_weight_decay: 0.0
+      lr: 0.005
+      start_lr: 0.005
+      warmup: 0.0
+      weight_decay: 0.0
+    - name: lr5e-3_wd1e-4
+      final_lr: 0.0
+      final_weight_decay: 0.0001
+      lr: 0.005
+      start_lr: 0.005
+      warmup: 0.0
+      weight_decay: 0.0001
+    - name: lr5e-3_wd1e-2
+      final_lr: 0.0
+      final_weight_decay: 0.01
+      lr: 0.005
+      start_lr: 0.005
+      warmup: 0.0
+      weight_decay: 0.01
+
+    # --- Group 3: lr=0.001 (overlap with attentive probe grid) ---
+    - name: lr1e-3_wd0
+      final_lr: 0.0
+      final_weight_decay: 0.0
+      lr: 0.001
+      start_lr: 0.001
+      warmup: 0.0
+      weight_decay: 0.0
+    - name: lr1e-3_wd1e-4
+      final_lr: 0.0
+      final_weight_decay: 0.0001
+      lr: 0.001
+      start_lr: 0.001
+      warmup: 0.0
+      weight_decay: 0.0001
+    - name: lr1e-3_wd1e-2
+      final_lr: 0.0
+      final_weight_decay: 0.01
+      lr: 0.001
+      start_lr: 0.001
+      warmup: 0.0
+      weight_decay: 0.01
+
+logging:
+  output_dir: probe_mr_outputs_grid_linear_long
+  use_wandb: false
+  wandb_project: miracle-echo-clip-probe
+  wandb_run_name: null

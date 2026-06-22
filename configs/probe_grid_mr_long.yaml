@@ -1,0 +1,103 @@
+seed: 0
+
+model:
+  name: hf-hub:mkaichristensen/echo-clip
+  device: cuda
+
+data:
+  train_csv: /system/user/publicwork/fallmann/miracle/miracle/data/server/train_val_4class.csv
+  val_csv: /system/user/publicwork/fallmann/miracle/miracle/data/server/test_4class.csv
+  video_path_col: video_filename
+  label_col: label
+  subject_id_col: patient_id
+  borderline_policy: round_up
+  max_frames: 128
+  frame_step: 1
+  batch_size: 12
+  num_workers: 4
+
+probe:
+  type: attentive
+  depth: 4
+  num_heads: 16
+  mlp_ratio: 4.0
+  dropout: 0.0
+  use_layernorm: true
+
+optimization:
+  num_epochs: 20
+  multihead_kwargs:
+    # --- Group 1: weight_decay=0.01 ---
+    - name: lr1e-3_wd1e-2
+      final_lr: 0.0
+      final_weight_decay: 0.01
+      lr: 0.001
+      start_lr: 0.001
+      warmup: 0.0
+      weight_decay: 0.01
+    - name: lr5e-4_wd1e-2
+      final_lr: 0.0
+      final_weight_decay: 0.01
+      lr: 0.0005
+      start_lr: 0.0005
+      warmup: 0.0
+      weight_decay: 0.01
+    - name: lr1e-4_wd1e-2
+      final_lr: 0.0
+      final_weight_decay: 0.01
+      lr: 0.0001
+      start_lr: 0.0001
+      warmup: 0.0
+      weight_decay: 0.01
+
+    # --- Group 2: weight_decay=0.1 ---
+    - name: lr1e-3_wd1e-1
+      final_lr: 0.0
+      final_weight_decay: 0.1
+      lr: 0.001
+      start_lr: 0.001
+      warmup: 0.0
+      weight_decay: 0.1
+    - name: lr5e-4_wd1e-1
+      final_lr: 0.0
+      final_weight_decay: 0.1
+      lr: 0.0005
+      start_lr: 0.0005
+      warmup: 0.0
+      weight_decay: 0.1
+    - name: lr1e-4_wd1e-1
+      final_lr: 0.0
+      final_weight_decay: 0.1
+      lr: 0.0001
+      start_lr: 0.0001
+      warmup: 0.0
+      weight_decay: 0.1
+
+    # --- Group 3: weight_decay=0.4 ---
+    - name: lr1e-3_wd4e-1
+      final_lr: 0.0
+      final_weight_decay: 0.4
+      lr: 0.001
+      start_lr: 0.001
+      warmup: 0.0
+      weight_decay: 0.4
+    - name: lr5e-4_wd4e-1
+      final_lr: 0.0
+      final_weight_decay: 0.4
+      lr: 0.0005
+      start_lr: 0.0005
+      warmup: 0.0
+      weight_decay: 0.4
+    - name: lr1e-4_wd4e-1
+      final_lr: 0.0
+      final_weight_decay: 0.4
+      lr: 0.0001
+      start_lr: 0.0001
+      warmup: 0.0
+      weight_decay: 0.4
+
+logging:
+  output_dir: probe_mr_outputs_grid_long
+  use_wandb: false
+  wandb_project: miracle-echo-clip-probe
+  wandb_run_name: null
