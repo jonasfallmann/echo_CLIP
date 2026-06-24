@@ -657,6 +657,16 @@ def train_probe(cfg):
 
     logger.info("Initialized %d probe heads", len(probes))
 
+    # Log parameter counts for each classifier
+    for idx, (probe, head_name) in enumerate(zip(probes, head_names)):
+        total_params = sum(p.numel() for p in probe.parameters())
+        trainable_params = sum(p.numel() for p in probe.parameters() if p.requires_grad)
+        non_trainable_params = total_params - trainable_params
+        logger.info(
+            "  [%s] %s: total=%,d  trainable=%,d  non-trainable=%,d",
+            idx, head_name, total_params, trainable_params, non_trainable_params,
+        )
+
     # Initialize optimizers, schedulers, and scalers
     optimizers, schedulers, wd_schedulers, scalers = init_opt(
         probes=probes,
